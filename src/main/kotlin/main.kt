@@ -18,7 +18,7 @@ data class Circle(val middle: BigDecimal, val radius: BigDecimal) {
     }
 }
 
-open class Matrix(private val height: Int, val width: Int = height) {
+open class Matrix(val height: Int, val width: Int = height) {
     val size: Int
         get() = if (height == width) height else throw IllegalStateException("Matrix is not squared")
 
@@ -93,13 +93,9 @@ open class Matrix(private val height: Int, val width: Int = height) {
     }
 
 
-    private fun dimensions(): Pair<Int, Int> {
-        return mt.size to mt[0].size
-    }
-
-    fun isZero(): Boolean {
-        return mt.all { arr ->
-            arr.all { it < BigDecimal(1e-9) }
+    fun hasZero(): Boolean {
+        return mt.any { line ->
+            line.any { it.abs() < BigDecimal(1e-9) }
         }
     }
 
@@ -108,8 +104,8 @@ open class Matrix(private val height: Int, val width: Int = height) {
     }
 
     override fun toString(): String {
-        return mt.joinToString(prefix = "[", postfix = "]\n", separator = "\n") {
-            it.joinToString(
+        return mt.joinToString(prefix = "[", postfix = "]\n", separator = "\n") { line ->
+            line.joinToString(
                 prefix = "{",
                 postfix = "}",
                 separator = ","
@@ -163,11 +159,6 @@ open class Matrix(private val height: Int, val width: Int = height) {
     }
 
     companion object {
-        fun read(n: Int, s: String = ""): Matrix {
-            return Matrix(Array(n) {
-                readLine()!!.split(' ').map { it.toDouble().toBigDecimal() }.toTypedArray()
-            })
-        }
 
         fun getIdentity(size: Int): Matrix {
             return Matrix(Array(size) { i ->
@@ -203,8 +194,8 @@ open class Matrix(private val height: Int, val width: Int = height) {
         }
 
         fun getUpperFrom(m: Matrix): Matrix {
-            return Matrix(m.mt.mapIndexed { j, arr ->
-                arr.mapIndexed { i, elem ->
+            return Matrix(m.mt.mapIndexed { i, arr ->
+                arr.mapIndexed { j, elem ->
                     if (j > i) elem else BigDecimal(0)
                 }.toTypedArray()
             }.toTypedArray())
@@ -222,7 +213,7 @@ open class Matrix(private val height: Int, val width: Int = height) {
             m -= newMatrix
         }
 
-        fun getQRdecompositionWithHouseholderMethod(m: Matrix): Pair<Matrix, Matrix> {
+        fun getQRDecompositionWithHouseholderMethod(m: Matrix): Pair<Matrix, Matrix> {
             val matrixR = m.copy()
             val size = matrixR.width
             val multiplications = mutableListOf<Vector>()
@@ -263,8 +254,8 @@ open class Matrix(private val height: Int, val width: Int = height) {
         }
 
         fun getLowerFrom(m: Matrix): Matrix {
-            return Matrix(m.mt.mapIndexed { j, arr ->
-                arr.mapIndexed { i, elem ->
+            return Matrix(m.mt.mapIndexed { i, arr ->
+                arr.mapIndexed { j, elem ->
                     if (j < i) elem else BigDecimal(0)
                 }.toTypedArray()
             }.toTypedArray())
@@ -289,7 +280,7 @@ open class Matrix(private val height: Int, val width: Int = height) {
             val isTridiag = isTridiagonal(m)
             while (true) {
                 for (i in 0..15) {
-                    val ans = getQRdecompositionWithGivensRotation(matrix, isTridiag = isTridiag)
+                    val ans = getQRDecompositionWithGivensRotation(matrix, isTridiag = isTridiag)
                     val Q = ans.first
                     val R = ans.second
                     if (!isTridiag || needQ)
@@ -313,7 +304,7 @@ open class Matrix(private val height: Int, val width: Int = height) {
             val isTridiag = isTridiagonal(m)
 
             for (i in 0..25) {
-                val ans = getQRdecompositionWithGivensRotation(matrix, isTridiag = isTridiag)
+                val ans = getQRDecompositionWithGivensRotation(matrix, isTridiag = isTridiag)
                 val Q = ans.first
                 val R = ans.second
                 if (needQ)
@@ -325,7 +316,7 @@ open class Matrix(private val height: Int, val width: Int = height) {
             var sMatrix = getIdentity(m.size) * matrix[diag][diag]
             while (true) {
                 for (i in 0..5) {
-                    val ans = getQRdecompositionWithGivensRotation(matrix - sMatrix, isTridiag = isTridiag)
+                    val ans = getQRDecompositionWithGivensRotation(matrix - sMatrix, isTridiag = isTridiag)
                     val Q = ans.first
                     val R = ans.second
                     if (needQ)
@@ -345,7 +336,7 @@ open class Matrix(private val height: Int, val width: Int = height) {
         }
 
         //Задача 4 и Задача 3 как подзадача данной
-        fun getQRdecompositionWithGivensRotation(matrix: Matrix, isTridiag: Boolean = false): Pair<Matrix, Matrix> {
+        fun getQRDecompositionWithGivensRotation(matrix: Matrix, isTridiag: Boolean = false): Pair<Matrix, Matrix> {
             fun removeElement(
                 m: Matrix,
                 i: Int,
@@ -464,25 +455,27 @@ open class Matrix(private val height: Int, val width: Int = height) {
         fun findOptimalAlpha(value: Int, isP: Boolean): BigDecimal {
             lateinit var m: Matrix
             if (isP) {
-                fun binpow(x: Int, y: Int, mod: Int): Int {
-                    if (y <= 0)
-                        return 1
-                    if (y % 2 == 1)
-                        return binpow(x, y - 1, mod) * x % mod
-                    return ({e : Int -> e * e }(binpow(x, y / 2, mod))) % mod
-                }
-                fun opposite(x:Int, p:Int) = if (x == 0) 0 else binpow(x, p - 2, p)
-
-                val p = value
-                m = Matrix(p)
-                for (x in 1 until p) {
-                    val prev = if (x == 0) p - 1 else x - 1
-                    val next = if (x == p - 1) 0 else x + 1
-                    val opp = opposite(x, p)
-                    m[x][prev] += BigDecimal.ONE
-                    m[x][next] += BigDecimal.ONE
-                    m[x][opp] += BigDecimal.ONE
-                }
+                throw Exception("Wrong type")
+//                fun binpow(x: Int, y: Int, mod: Int): Int {
+//                    if (y <= 0)
+//                        return 1
+//                    if (y % 2 == 1)
+//                        return binpow(x, y - 1, mod) * x % mod
+//                    return ({ e: Int -> e * e }(binpow(x, y / 2, mod))) % mod
+//                }
+//
+//                fun opposite(x: Int, p: Int) = if (x == 0) 0 else binpow(x, p - 2, p)
+//
+//                val p = value
+//                m = Matrix(p)
+//                for (x in 1 until p) {
+//                    val prev = if (x == 0) p - 1 else x - 1
+//                    val next = if (x == p - 1) 0 else x + 1
+//                    val opp = opposite(x, p)
+//                    m[x][prev] += BigDecimal.ONE
+//                    m[x][next] += BigDecimal.ONE
+//                    m[x][opp] += BigDecimal.ONE
+//                }
             } else {
                 val n = value
                 fun toNum(x: Int, y: Int) = ((x % n + n) % n) * n + ((y % n + n) % n)
@@ -589,13 +582,6 @@ class Vector(n: Int) {
     }
 
     companion object {
-        fun read(n: Int): Vector {
-            val arr =
-                readLine()!!.split(' ').map { it.toDouble().toBigDecimal(DEFAULT_MATH_CONTEXT) }.toTypedArray()
-            if (arr.size != n)
-                throw IllegalArgumentException("Wrong vector length")
-            return Vector(arr)
-        }
 
         fun buildRandom(n: Int): Vector {
             val r = Random()
@@ -627,18 +613,26 @@ class Vector(n: Int) {
     }
 }
 
+fun String.toMatrix(): Matrix {
+    return Matrix.fromString(this)
+}
+
+fun String.toVector(): Vector {
+    val m = this.toMatrix()
+    if (m.width != 1)
+        throw java.lang.IllegalArgumentException("Wrong dimensions")
+    return Vector(Array(m.height) { ind -> m[ind][0] })
+}
+
+
 //Задача 1
-fun simpleIterationMethod(): Vector? {
-    val n = readLine()!!.toInt()
-    val a = Matrix.read(n)
-    val b = Vector.read(n)
-    val eps = readLine()!!.toBigDecimal()
+fun simpleIterationMethod(a: Matrix, b: Vector, givenEps: Double): Vector? {
+    val eps = givenEps.toBigDecimal()
 
-    if (Matrix.gershgorinCircles(a).all { (c, e) -> (c - e).abs().max((c + e).abs()) >= BigDecimal.ONE }) {
-        return null
-    }
+    val isGershgorinBad =
+        Matrix.gershgorinCircles(a).all { (c, e) -> (c - e).abs().max((c + e).abs()) >= BigDecimal.ONE }
 
-    var x = Vector.buildRandom(n)
+    var x = Vector.buildRandom(b.size)
 
     var timer = 0
     while (true) {
@@ -647,7 +641,7 @@ fun simpleIterationMethod(): Vector? {
             return x
         if (nx.norm() > x.norm() + BigDecimal.ONE) { //TODO() norm troubles
             timer++
-            if (timer >= 20)
+            if (isGershgorinBad && timer >= 20)
                 return null
         }
 
@@ -656,19 +650,16 @@ fun simpleIterationMethod(): Vector? {
 }
 
 //Задача 2
-fun gaussSeidelMethod(): Vector? {
-    val n = readLine()!!.toInt()
-    val a = Matrix.read(n)
-    val b = Vector.read(n)
-    val eps = readLine()!!.toBigDecimal()
+fun gaussSeidelMethod(a: Matrix, b: Vector, givenEps: Double): Vector? {
+    val eps = givenEps.toBigDecimal()
 
-    if (Matrix.getDiagPartOfMatrix(a).isZero()) {
+    if (Matrix.diagToVector(a).toArray().any{it.abs() < (1e-9).toBigDecimal()}) {
         return null
     }
     val triangleUpper = Matrix.getUpperFrom(a)
     val triangleLower = Matrix.getLowerFrom(a) + Matrix.getDiagPartOfMatrix(a)
 
-    var x = Vector.buildRandom(n)
+    var x = Vector.buildRandom(b.size)
     var badCounter = 0
 
     while (true) {
@@ -676,13 +667,23 @@ fun gaussSeidelMethod(): Vector? {
             return x
         }
         val right = -triangleUpper * x + b
-        val vecData = Array(n) { BigDecimal.ZERO }
-        val nx = Vector(vecData.mapIndexed { line, _ ->
-            (right[line] - triangleLower[line].foldIndexed(BigDecimal.ZERO, { i, sum, elem ->
-                sum + (if (i < line) vecData[i] * elem
-                else BigDecimal.ZERO)
-            })) / triangleLower[line][line]
-        }.toTypedArray())
+        val vecData = Array(b.size) { BigDecimal.ZERO }
+
+//        val nx = Vector(vecData.mapIndexed { line, _ ->
+//            (right[line] - triangleLower[line].foldIndexed(BigDecimal.ZERO, { i, sum, elem ->
+//                sum + (if (i < line) vecData[i] * elem
+//                else BigDecimal.ZERO)
+//            })) / triangleLower[line][line]
+//        }.toTypedArray())
+
+        val nx = Vector(Array(right.size) { line ->
+            var sum = BigDecimal.ZERO
+            for (i in 0 until line - 1)
+                sum += vecData[i] * triangleLower[line][i]
+            sum = (right[line] - sum).divide(triangleLower[line][line], DEFAULT_MATH_CONTEXT)
+            vecData[line] = sum
+            sum
+        })
 
         if (nx.norm() > x.norm() + BigDecimal.ONE) {
             badCounter++
@@ -694,6 +695,6 @@ fun gaussSeidelMethod(): Vector? {
 }
 
 
-fun main(args: Array<String>) {
+fun main() {
     println(Matrix.findOptimalAlpha(3, true))
 }
