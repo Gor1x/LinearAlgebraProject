@@ -23,7 +23,7 @@ class QRDecompositionGivensTest {
     }
 
     @Test
-    fun QRdecompositionGivens_50x50() { //~7 seconds
+    fun QRdecompositionGivens_50x50() {
         val matrix = Matrix.fromString(File("src/test/resources/squared_matrix50x50.txt").readLines()[0])
         val pr = Matrix.getQRDecompositionWithGivensRotation(matrix)
         assertEquals(pr.first * pr.first.transposed(), Matrix.getIdentity(pr.first.width), "Q is not orthogonal")

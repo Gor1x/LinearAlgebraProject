@@ -7,8 +7,6 @@ import kotlin.test.assertTrue
 
 class EigenvaluesDiagonal {
 
-
-
     @Test
     fun testEigenValuesTridiagonal() {
         val matrix = Matrix.fromString(File("src/test/resources/tridiagonal/20x20.txt").readLines()[0])

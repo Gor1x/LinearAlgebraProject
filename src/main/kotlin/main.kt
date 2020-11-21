@@ -7,7 +7,7 @@ import kotlin.math.abs
 import kotlin.math.min
 
 const val EPS = 1e-9
-const val DEFAULT_PRECISION = 25
+const val DEFAULT_PRECISION = 15
 val DEFAULT_MATH_CONTEXT = MathContext(DEFAULT_PRECISION, RoundingMode.HALF_UP)
 
 data class Circle(val middle: BigDecimal, val radius: BigDecimal) {
@@ -93,9 +93,9 @@ open class Matrix(val height: Int, val width: Int = height) {
     }
 
 
-    fun hasZero(): Boolean {
-        return mt.any { line ->
-            line.any { it.abs() < BigDecimal(1e-9) }
+    fun isZero(): Boolean {
+        return mt.all { line ->
+            line.all { it.abs() < BigDecimal(1e-9) }
         }
     }
 
@@ -159,7 +159,6 @@ open class Matrix(val height: Int, val width: Int = height) {
     }
 
     companion object {
-
         fun getIdentity(size: Int): Matrix {
             return Matrix(Array(size) { i ->
                 Array(size) { j ->
@@ -169,14 +168,14 @@ open class Matrix(val height: Int, val width: Int = height) {
         }
 
         fun gershgorinCircles(m: Matrix): Array<Circle> {
-            return Array(m.height) { ind ->
+            return Array(m.height) { line ->
                 var sum = BigDecimal.ZERO
                 for (i in 0 until m.width)
-                    sum += if (i == ind)
+                    sum += if (i == line)
                         BigDecimal.ZERO
                     else
-                        m[ind][i].abs()
-                Circle(m[ind][ind], sum)
+                        m[line][i].abs()
+                Circle(m[line][line], sum)
             }
         }
 
@@ -363,7 +362,7 @@ open class Matrix(val height: Int, val width: Int = height) {
                     matrixR.height
 
                 var curIndex = column
-                //Try to find first zero in this column
+                //Try to find first not zero in this column
                 while (curIndex < maxHeightTo && matrixR[curIndex][column].abs() < EPS.toBigDecimal())
                     curIndex++
                 //Maybe it is all zero so we need to exit
@@ -381,8 +380,7 @@ open class Matrix(val height: Int, val width: Int = height) {
                             DEFAULT_PRECISION / 2,
                             RoundingMode.HALF_UP
                         ) != BigDecimal.ZERO
-                    )
-                        removeElement(matrixR, i = curIndex, j = column, removes = removes)
+                    ) removeElement(matrixR, i = curIndex, j = column, removes = removes)
                     curIndex++
                 }
             }
@@ -484,14 +482,10 @@ open class Matrix(val height: Int, val width: Int = height) {
                     for (y in 0 until n)
                         for (sgn in listOf(-1, 1)) {
                             m[toNum(x, y)][toNum(x + 2 * y * sgn, y)] += BigDecimal.ONE
-
                             m[toNum(x, y)][toNum(x + (2 * y + 1) * sgn, y)] += BigDecimal.ONE
-
                             m[toNum(x, y)][toNum(x, y + 2 * x * sgn)] += BigDecimal.ONE
-
                             m[toNum(x, y)][toNum(x, y + (2 * x + 1) * sgn)] += BigDecimal.ONE
                         }
-
             }
             val d = m.mt[0].reduce { acc, val2 -> acc + val2 }
             for (i in 0 until m.height)
@@ -509,7 +503,6 @@ open class Matrix(val height: Int, val width: Int = height) {
         return Matrix(mt.map { vec ->
             vec.map { it * BigDecimal.ONE }.toTypedArray().copyOf()
         }.toTypedArray().copyOf())
-
     }
 }
 
@@ -623,23 +616,27 @@ fun String.toVector(): Vector {
         throw java.lang.IllegalArgumentException("Wrong dimensions")
     return Vector(Array(m.height) { ind -> m[ind][0] })
 }
+//
+//fun method(a: Matrix, eps: Double = 1e-5) : Vector{
+//
+//}
 
 
 //Задача 1
-fun simpleIterationMethod(a: Matrix, b: Vector, givenEps: Double): Vector? {
+fun simpleIterationMethod(a: Matrix, b: Vector, givenEps: Double, approx: Vector? = null): Vector? {
     val eps = givenEps.toBigDecimal()
 
     val isGershgorinBad =
-        Matrix.gershgorinCircles(a).all { (c, e) -> (c - e).abs().max((c + e).abs()) >= BigDecimal.ONE }
+        Matrix.gershgorinCircles(a).any { (mid, rad) -> (mid - rad).abs().max((mid + rad).abs()) >= BigDecimal.ONE }
 
-    var x = Vector.buildRandom(b.size)
+    var x = approx ?: Vector.buildRandom(b.size)
 
     var timer = 0
     while (true) {
         val nx = a * x + b
         if ((nx - (a * nx) - b).norm() < eps)
-            return x
-        if (nx.norm() > x.norm() + BigDecimal.ONE) { //TODO() norm troubles
+            return nx
+        if (nx.norm() > x.norm() + BigDecimal.ONE) {
             timer++
             if (isGershgorinBad && timer >= 20)
                 return null
@@ -653,7 +650,7 @@ fun simpleIterationMethod(a: Matrix, b: Vector, givenEps: Double): Vector? {
 fun gaussSeidelMethod(a: Matrix, b: Vector, givenEps: Double): Vector? {
     val eps = givenEps.toBigDecimal()
 
-    if (Matrix.diagToVector(a).toArray().any{it.abs() < (1e-9).toBigDecimal()}) {
+    if (Matrix.diagToVector(a).toArray().any { it.abs() < (1e-9).toBigDecimal() }) {
         return null
     }
     val triangleUpper = Matrix.getUpperFrom(a)
@@ -668,13 +665,6 @@ fun gaussSeidelMethod(a: Matrix, b: Vector, givenEps: Double): Vector? {
         }
         val right = -triangleUpper * x + b
         val vecData = Array(b.size) { BigDecimal.ZERO }
-
-//        val nx = Vector(vecData.mapIndexed { line, _ ->
-//            (right[line] - triangleLower[line].foldIndexed(BigDecimal.ZERO, { i, sum, elem ->
-//                sum + (if (i < line) vecData[i] * elem
-//                else BigDecimal.ZERO)
-//            })) / triangleLower[line][line]
-//        }.toTypedArray())
 
         val nx = Vector(Array(right.size) { line ->
             var sum = BigDecimal.ZERO
@@ -695,6 +685,109 @@ fun gaussSeidelMethod(a: Matrix, b: Vector, givenEps: Double): Vector? {
 }
 
 
+class Complex(val re: BigDecimal, val im: BigDecimal) {
+    operator fun times(other: Complex) = Complex(re * other.re - im * other.im, re * other.im + im * other.re)
+    operator fun times(k: BigDecimal) = Complex(re * k, im * k)
+    operator fun plus(other: Complex) = Complex(re + other.re, im + other.im)
+    operator fun minus(other: Complex) = Complex(re - other.re, im - other.im)
+    fun norm() = (re * re + im * im).sqrt(DEFAULT_MATH_CONTEXT)
+    override fun toString() =
+        "Complex(re=${re.setScale(3, RoundingMode.HALF_EVEN)}, im=${im.setScale(3, RoundingMode.HALF_EVEN)})"
+
+}
+
+fun eigenvalueIteration(
+    givenA: Array<Array<Pair<Double, Double>>>,
+    givenE: Double,
+    x0: Array<Pair<Int, Int>>? = null
+): Pair<Complex, Array<Array<Complex>>>? {
+    operator fun Array<Array<Complex>>.times(other: Array<Array<Complex>>): Array<Array<Complex>> {
+        val res = Array(this.size) { Array(other[0].size) { Complex(BigDecimal.ZERO, BigDecimal.ZERO) } }
+        for (i in 0 until this.size)
+            for (j in 0 until other[0].size)
+                for (k in 0 until this[0].size)
+                    res[i][j] += this[i][k] * other[k][j]
+        return res
+    }
+
+    fun Array<Array<Complex>>.transposed(): Array<Array<Complex>> {
+        val arr = Array(this[0].size) { i ->
+            Array(this.size) { j ->
+                this[j][i]
+            }
+        }
+        return arr
+    }
+
+    operator fun Array<Array<Complex>>.minus(other: Array<Array<Complex>>): Array<Array<Complex>> {
+        return Array(this.size) { i ->
+            Array(this[0].size) { j ->
+                this[i][j] - other[i][j]
+            }
+        }
+    }
+
+    fun Array<Array<Complex>>.norm(): BigDecimal {
+        return this.fold(BigDecimal.ZERO) { genCounter, line ->
+            genCounter + line.fold(BigDecimal.ZERO) { acc, complex ->
+                acc + complex.norm().pow(2)
+            }
+        }.sqrt(DEFAULT_MATH_CONTEXT)
+    }
+
+    operator fun Array<Array<Complex>>.times(k: BigDecimal): Array<Array<Complex>> {
+        return this.map { line ->
+            line.map { it * k }.toTypedArray()
+        }.toTypedArray()
+    }
+
+    operator fun Array<Array<Complex>>.times(k: Complex): Array<Array<Complex>> {
+        return this.map { line ->
+            line.map { it * k }.toTypedArray()
+        }.toTypedArray()
+    }
+
+    val size = givenA.size
+    if (givenA.any { line -> line.size != size })
+        throw IllegalArgumentException("Given arr is not a matrix")
+
+    val eps = givenE.toBigDecimal()
+    val matrix =
+        givenA.map { line -> line.map { (re, im) -> Complex(re.toBigDecimal(), im.toBigDecimal()) }.toTypedArray() }
+            .toTypedArray()
+    var vec =
+        x0?.map { (re, im) -> arrayOf(Complex(re.toBigDecimal(), im.toBigDecimal())) }?.toTypedArray()
+            ?: Vector.buildRandom(givenA.size).normalized().toArray().map { arrayOf(Complex(it, BigDecimal.ZERO)) }
+                .toTypedArray()
+
+    if (vec.size != size)
+        throw IllegalArgumentException("dimensions of matrix and vector don't match")
+
+    var counter = 0
+    while (true) {
+        val lambda = (vec.transposed() * matrix * vec)[0][0]
+        if ((matrix * vec - vec * lambda).norm() < eps)
+            return lambda to vec
+
+        vec = matrix * vec
+        vec = vec * (BigDecimal.ONE.divide(vec.norm(), DEFAULT_MATH_CONTEXT))
+
+        counter++
+        if (counter > 1e8)
+            return null
+    }
+}
+
 fun main() {
-    println(Matrix.findOptimalAlpha(3, true))
+    fun pr(i: Int): Pair<Double, Double> = i.toDouble() to 0.0
+
+    print(
+        eigenvalueIteration(
+            arrayOf(
+                arrayOf(pr(1), pr(0), pr(0)),
+                arrayOf(pr(0), pr(2), pr(0)),
+                arrayOf(pr(0), pr(0), pr(3))
+            ), 1e-2
+        )
+    )
 }

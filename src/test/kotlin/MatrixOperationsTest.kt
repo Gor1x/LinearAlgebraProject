@@ -67,6 +67,16 @@ class MatrixOperationsTest {
         assertTrue { res.equalsWithAccuracy(matrix, 1e-2) }
     }
 
+    @Test
+    fun testEigenValues30x30() {
+        val matrix = Matrix.fromString(File("src/test/resources/symmetrical/30x30.txt").readLines()[0])
+        val (vec, mt) = Matrix.getEigenvectors(matrix, 1e-3,true)
+        assertEquals(mt * mt.transposed(), Matrix.getIdentity(mt.size))
+        val diagMatrix = Matrix.buildFromDiag(vec)
+        val res = mt * diagMatrix * mt.transposed()
+        assertTrue { res.equalsWithAccuracy(matrix, 1e-2) }
+    }
+
 
     @Test
     fun testTridiagonalizationSimple() {
