@@ -7,7 +7,7 @@ import kotlin.math.abs
 import kotlin.math.min
 
 const val EPS = 1e-9
-const val DEFAULT_PRECISION = 15
+const val DEFAULT_PRECISION = 20
 val DEFAULT_MATH_CONTEXT = MathContext(DEFAULT_PRECISION, RoundingMode.HALF_UP)
 
 data class Circle(val middle: BigDecimal, val radius: BigDecimal) {
@@ -16,6 +16,10 @@ data class Circle(val middle: BigDecimal, val radius: BigDecimal) {
             radius.setScale(3, RoundingMode.HALF_UP)
         })"
     }
+}
+
+data class GivensMatrix(val i: Int, val j: Int, val phi: BigDecimal) {
+    fun transposed() : GivensMatrix = GivensMatrix(i, j, -phi)
 }
 
 open class Matrix(val height: Int, val width: Int = height) {
@@ -42,9 +46,7 @@ open class Matrix(val height: Int, val width: Int = height) {
         })
     }
 
-    operator fun get(i: Int): Array<BigDecimal> {
-        return mt[i]
-    }
+    operator fun get(i: Int): Array<BigDecimal> = mt[i]
 
     operator fun times(k: BigDecimal): Matrix {
         return Matrix(mt.map { arr ->
@@ -272,6 +274,11 @@ open class Matrix(val height: Int, val width: Int = height) {
             m.mt[j] = newJth
         }
 
+
+        fun multiplyOnGivensMatrix(m: Matrix, gm: GivensMatrix) {
+            multiplyOnGivensMatrix(m, gm.i, gm.j, gm.phi)
+        }
+
         fun getEigenvectors(m: Matrix, givenEps: Double = 1e-3, needQ: Boolean = true): Pair<Vector, Matrix> {
             var matrix = m.copy()
             val eps = givenEps.toBigDecimal()
@@ -299,65 +306,62 @@ open class Matrix(val height: Int, val width: Int = height) {
         ): Pair<Vector, Matrix> {
             var matrix = m.copy()
             val eps = givenEps.toBigDecimal()
-            var answerQ = getIdentity(m.size)
             val isTridiag = isTridiagonal(m)
+            val answerQTransposed = getIdentity(m.size)
 
             for (i in 0..25) {
                 val ans = getQRDecompositionWithGivensRotation(matrix, isTridiag = isTridiag)
-                val Q = ans.first
                 val R = ans.second
-                if (needQ)
-                    answerQ *= Q
-                matrix = R * Q
-            }
 
+                ans.third.reversed().forEach { multiplyOnGivensMatrix(answerQTransposed, it.transposed()) }
+
+                val transposedRQ = R.transposed();
+                ans.third.reversed().forEach { multiplyOnGivensMatrix(transposedRQ, it.transposed())}
+
+                matrix = transposedRQ.transposed()
+            }
             var diag = m.size - 1
             var sMatrix = getIdentity(m.size) * matrix[diag][diag]
             while (true) {
                 for (i in 0..5) {
                     val ans = getQRDecompositionWithGivensRotation(matrix - sMatrix, isTridiag = isTridiag)
-                    val Q = ans.first
                     val R = ans.second
-                    if (needQ)
-                        answerQ *= Q
-                    matrix = R * Q + sMatrix
+                    ans.third.reversed().forEach { multiplyOnGivensMatrix(answerQTransposed, it.transposed()) }
+                    val transposedRQ = R.transposed();
+                    ans.third.reversed().forEach { multiplyOnGivensMatrix(transposedRQ, it.transposed())}
+                    matrix = transposedRQ.transposed() + sMatrix
                 }
-
                 if (diag != 0 && matrix[diag][diag - 1].abs() < eps && matrix[diag - 1][diag].abs() < eps) {
                     diag--
                     sMatrix = getIdentity(m.size) * matrix[diag][diag]
                 }
                 if (diag == 0)
                     break
-
             }
-            return diagToVector(matrix) to answerQ
+            return diagToVector(matrix) to answerQTransposed.transposed()
         }
 
         //Задача 4 и Задача 3 как подзадача данной
-        fun getQRDecompositionWithGivensRotation(matrix: Matrix, isTridiag: Boolean = false): Pair<Matrix, Matrix> {
-            fun removeElement(
-                m: Matrix,
-                i: Int,
-                j: Int,
-                removes: MutableList<Triple<Int, Int, BigDecimal>>,
-                column: Int = j
-            ) {
+        fun getQRDecompositionWithGivensRotation(
+            matrix: Matrix,
+            isTridiag: Boolean = false
+        ): Triple<Matrix, Matrix, Array<GivensMatrix>> {
+            fun removeElement(m: Matrix, i: Int, j: Int, removes: MutableList<GivensMatrix>, column: Int = j) {
                 val x_i = m[i][column]
                 val x_j = m[j][column]
                 val bot = (x_i * x_i + x_j * x_j).sqrt(DEFAULT_MATH_CONTEXT)
                 val y = -x_i.divide(bot, DEFAULT_MATH_CONTEXT)
                 val x = x_j.divide(bot, DEFAULT_MATH_CONTEXT)
                 val angle = BigDecimalMath.atan2(y, x, DEFAULT_MATH_CONTEXT)
-                removes.add(Triple(i, j, angle))
+                removes.add(GivensMatrix(i, j, angle))
                 multiplyOnGivensMatrix(m, i, j, angle)
             }
 
             val matrixR = matrix.copy()
-            val removes: MutableList<Triple<Int, Int, BigDecimal>> = mutableListOf()
+            val removes: MutableList<GivensMatrix> = mutableListOf()
             for (column in 0 until matrixR.width) {
                 val maxHeightTo = if (isTridiag)
-                    min(column + 3, matrixR.height)
+                    min(column + 2, matrixR.height)
                 else
                     matrixR.height
 
@@ -372,7 +376,7 @@ open class Matrix(val height: Int, val width: Int = height) {
                     //Move element which is not zero to a diag
                     val pidiv2 = BigDecimalMath.pi(DEFAULT_MATH_CONTEXT) / BigDecimal(2)
                     multiplyOnGivensMatrix(matrixR, column, curIndex, pidiv2)
-                    removes.add(Triple(column, curIndex, pidiv2))
+                    removes.add(GivensMatrix(column, curIndex, pidiv2))
                 }
                 curIndex++
                 while (curIndex < maxHeightTo) {
@@ -380,15 +384,18 @@ open class Matrix(val height: Int, val width: Int = height) {
                             DEFAULT_PRECISION / 2,
                             RoundingMode.HALF_UP
                         ) != BigDecimal.ZERO
-                    ) removeElement(matrixR, i = curIndex, j = column, removes = removes)
+                    )
+                        removeElement(matrixR, i = curIndex, j = column, removes = removes)
                     curIndex++
                 }
             }
+            val arr = removes.reversed().map { tr -> GivensMatrix(tr.i, tr.j, -tr.phi) }.toTypedArray()
             val matrixQ = getIdentity(matrixR.width)
-            removes.reversed().forEach { (i, j, phi) ->
-                multiplyOnGivensMatrix(matrixQ, i, j, -phi)
+            arr.forEach { tr ->
+                multiplyOnGivensMatrix(matrixQ, tr)
             }
-            return matrixQ to matrixR
+
+            return Triple(matrixQ, matrixR, arr)
         }
 
         private fun isTridiagonal(matrix: Matrix): Boolean {
@@ -425,7 +432,7 @@ open class Matrix(val height: Int, val width: Int = height) {
             if (!isGraph(g1))
                 throw IllegalArgumentException("First argument is not a graph")
             if (!isGraph(g2))
-                throw IllegalArgumentException("First argument is not a graph")
+                throw IllegalArgumentException("Second argument is not a graph")
 
             fun degrees(g: Matrix): List<Double> = g.mt.map { line ->
                 line.fold(0.0) { acc, it ->
@@ -616,11 +623,6 @@ fun String.toVector(): Vector {
         throw java.lang.IllegalArgumentException("Wrong dimensions")
     return Vector(Array(m.height) { ind -> m[ind][0] })
 }
-//
-//fun method(a: Matrix, eps: Double = 1e-5) : Vector{
-//
-//}
-
 
 //Задача 1
 fun simpleIterationMethod(a: Matrix, b: Vector, givenEps: Double, approx: Vector? = null): Vector? {
@@ -690,7 +692,7 @@ class Complex(val re: BigDecimal, val im: BigDecimal) {
     operator fun times(k: BigDecimal) = Complex(re * k, im * k)
     operator fun plus(other: Complex) = Complex(re + other.re, im + other.im)
     operator fun minus(other: Complex) = Complex(re - other.re, im - other.im)
-    fun norm() = (re * re + im * im).sqrt(DEFAULT_MATH_CONTEXT)
+    fun norm(): BigDecimal = (re * re + im * im).sqrt(DEFAULT_MATH_CONTEXT)
     override fun toString() =
         "Complex(re=${re.setScale(3, RoundingMode.HALF_EVEN)}, im=${im.setScale(3, RoundingMode.HALF_EVEN)})"
 
@@ -703,9 +705,9 @@ fun eigenvalueIteration(
 ): Pair<Complex, Array<Array<Complex>>>? {
     operator fun Array<Array<Complex>>.times(other: Array<Array<Complex>>): Array<Array<Complex>> {
         val res = Array(this.size) { Array(other[0].size) { Complex(BigDecimal.ZERO, BigDecimal.ZERO) } }
-        for (i in 0 until this.size)
-            for (j in 0 until other[0].size)
-                for (k in 0 until this[0].size)
+        for (i in this.indices)
+            for (j in other[0].indices)
+                for (k in this[0].indices)
                     res[i][j] += this[i][k] * other[k][j]
         return res
     }
