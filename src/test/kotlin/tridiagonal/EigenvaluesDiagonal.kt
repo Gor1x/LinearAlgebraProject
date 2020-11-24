@@ -11,31 +11,21 @@ class EigenvaluesDiagonal {
     fun testEigenValuesTridiagonal() {
         val matrix = Matrix.fromString(File("src/test/resources/tridiagonal/20x20.txt").readLines()[0])
         val (vec, mt) = Matrix.getEigenvectors(matrix, 1e-2)
-        // assertEquals(mt * mt.transposed(), Matrix.getIdentity(mt.size))
+        assertEquals(mt * mt.transposed(), Matrix.getIdentity(mt.size))
         val diagMatrix = Matrix.buildFromDiag(vec)
-        // val res = mt * diagMatrix * mt.transposed()
-        // assertEquals(res, matrix)
-        assertTrue { true }
+         val res = mt * diagMatrix * mt.transposed()
+        assertTrue { res.equalsWithAccuracy(matrix, 1e-1) }
     }
 
     @Test
-    fun testEigenValuesTridiagonal10x10() { // ~7 seconds
-        val matrix = Matrix.fromString(File("src/test/resources/tridiagonal/10x10_small_numbers.txt").readLines()[0])
-        val (vec, mt) = Matrix.getEigenvectors(matrix, 1e-3)
-        //assertEquals(mt * mt.transposed(), Matrix.getIdentity(mt.size))
-        val diagMatrix = Matrix.buildFromDiag(vec)
-        assertEquals(diagMatrix, diagMatrix)
-    }
-
-    @Test
-    fun testEigenValuesShiftTridiagonal10x10WithPrinting() { // ~42 seconds
+    fun testEigenValuesShiftTridiagonal10x10WithPrinting() {
         val matrix = Matrix.fromString(File("src/test/resources/tridiagonal/10x10_small_numbers.txt").readLines()[0])
         val (vec, mt) = Matrix.getEigenvectorsFastTridiagonal(matrix, 1e-3, true)
-        //assertEquals(mt * mt.transposed(), Matrix.getIdentity(mt.size))
+        assertEquals(mt * mt.transposed(), Matrix.getIdentity(mt.size))
         val diagMatrix = Matrix.buildFromDiag(vec)
         val res = mt * diagMatrix * mt.transposed()
-
-        assertTrue { res.equalsWithAccuracy(matrix, 1e-3) }
+        print(res)
+        assertTrue { res.equalsWithAccuracy(matrix, 1e-1) }
     }
 }
 

@@ -28,14 +28,6 @@ class LinearEquationsTest {
     }
 
     @Test
-    fun linearEquationSystem_iterationMethod_withAnswer() {
-        val m = Matrix.fromString("{{2,0,0},{0,2,0},{0,0,2}}")
-        val b = Vector.buildOf(1, 1, 1)
-        val ans = simpleIterationMethod(m, b, 1e-5, approx = Vector.buildOf(-1.0, -1.0, -1.00001))
-        assertEquals(Vector.buildOf(-1, -1, -1), ans)
-    }
-
-    @Test
     fun linearEquationSystem_iterationMethod_big() {
         val reads = File("src/test/resources/iterationMethod30x30.txt").readLines()
         val matr = reads[0].toMatrix()
@@ -65,15 +57,6 @@ class LinearEquationsTest {
         val a = "{{30,0,0},{0,30,0},{0,0,30}}".toMatrix()
         val b = Vector.buildOf(1, 2, 4)
         val ans = gaussSeidelMethod(a, b, 1e-5)
-        assertEquals(ans, null)
-    }
-
-    @Test
-    fun linearEquationSystem_gaussSeidelMethod_big() {
-        val reads = File("src/test/resources/iterationMethod30x30.txt").readLines()
-        val matr = reads[0].toMatrix()
-        val vec = reads[1].toVector()
-        val ans = gaussSeidelMethod(matr - Matrix.getIdentity(matr.size), -vec, 1e-5)
-        assertEquals(ans, reads[2].toVector())
+        assertEquals(ans, Vector.buildOf(0.033, 0.067, 0.133))
     }
 }
