@@ -10,11 +10,11 @@ class EigenvaluesDiagonal {
     @Test
     fun testEigenValuesTridiagonal() {
         val matrix = Matrix.fromString(File("src/test/resources/tridiagonal/20x20.txt").readLines()[0])
-        val (vec, mt) = Matrix.getEigenvectors(matrix, 1e-2)
+        val (vec, mt) = Matrix.getEigenvectors(matrix, 1e-5)
         assertEquals(mt * mt.transposed(), Matrix.getIdentity(mt.size))
         val diagMatrix = Matrix.buildFromDiag(vec)
          val res = mt * diagMatrix * mt.transposed()
-        assertTrue { res.equalsWithAccuracy(matrix, 1e-1) }
+        assertTrue { res.equalsWithAccuracy(matrix, 1e-4) }
     }
 
     @Test
